@@ -4,9 +4,14 @@ gitlab:
   group_id: 123
 
 exclusions:
-  - archive-repo
-  - deprecated-project
-  - staging-backup
+  # Glob patterns (fnmatch syntax)
+  - "*.backup"            # Backup repositories (e.g., repo.backup, data.backup)
+  - "archive-*"           # Archived repositories (e.g., archive-2023, archive-old)
+  - "staging-*"           # Staging environments (e.g., staging-dev, staging-qa)
+  - "test_*"              # Test repositories (e.g., test_repo, test_project)
+  # Exact name matches
+  - "deprecated-project"  # Exact match for repository named "deprecated-project"
+  - "internal-only"       # Exact match for repository named "internal-only"
 
 merge_request_rules:
   merge_method: rebase  # Options: rebase, ff, ff+commit

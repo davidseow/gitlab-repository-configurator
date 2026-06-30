@@ -1,5 +1,6 @@
 import gitlab
 from typing import List, Dict, Any, Optional
+from fnmatch import fnmatch
 import logging
 
 logger = logging.getLogger(__name__)
@@ -14,6 +15,13 @@ class GitLabClient:
         self.gitlab_url = gitlab_url
         self.token = token
         self.gl = gitlab.Gitlab(gitlab_url, private_token=token)
+
+    def _is_excluded(self, project_name: str, exclude_patterns: List[str]) -> bool:
+        for pattern in exclude_patterns:
+            if fnmatch(project_name, pattern):
+                logger.info(f"Repository '{project_name}' matches exclusion pattern '{pattern}'")
+                return True
+        return False
 
     def get_group_repositories(
         self,
@@ -30,7 +38,7 @@ class GitLabClient:
 
             filtered = {}
             for project in projects:
-                if project.name not in exclude_list:
+                if not self._is_excluded(project.name, exclude_list):
                     filtered[project.id] = project
 
             logger.info(f"Found {len(filtered)} repositories in group {group_id}")

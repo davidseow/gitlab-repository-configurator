@@ -77,6 +77,52 @@ gitlab:
 export GITLAB_TOKEN=your-personal-access-token
 ```
 
+## Exclusion Patterns (Glob Matching)
+
+The exclusion list supports glob patterns using fnmatch syntax. This allows you to exclude repositories based on naming patterns rather than listing each one individually.
+
+### Common Patterns
+
+- `*.backup` - Matches any repository ending with `.backup` (e.g., `project.backup`, `data.backup`)
+- `archive-*` - Matches repositories starting with `archive-` (e.g., `archive-2023`, `archive-old`)
+- `staging-*` - Matches repositories starting with `staging-` (e.g., `staging-dev`, `staging-qa`)
+- `test_*` - Matches repositories starting with `test_` (e.g., `test_repo`, `test_project`)
+- `*-temp` - Matches repositories ending with `-temp` (e.g., `build-temp`, `merge-temp`)
+- `[abc]*` - Matches repositories starting with a, b, or c
+- `exact_name` - Exact match (without wildcards)
+
+### Advanced fnmatch Syntax
+
+- `*` - Matches any characters (including none)
+- `?` - Matches any single character
+- `[abc]` - Matches any of a, b, or c
+- `[!abc]` - Matches any character except a, b, c
+- `[a-z]` - Matches any character in range a to z
+
+### Configuration Example
+
+```yaml
+exclusions:
+  # Glob patterns
+  - "*.backup"
+  - "*.temp"
+  - "archive-*"
+  - "staging-*"
+  - "test_*"
+  - "[temporary]*"
+  # Exact matches (no wildcards)
+  - "deprecated-project"
+  - "internal-only"
+  - "do-not-configure"
+```
+
+### How It Works
+
+1. The tool reads exclusion patterns from your configuration
+2. For each repository discovered, it checks if the repository name matches any exclusion pattern
+3. Matching repositories are excluded from configuration
+4. Pattern matching is case-sensitive
+
 ## Usage
 
 ### Basic Usage

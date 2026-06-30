@@ -106,3 +106,108 @@ class TestGitLabClient:
         result = client.get_group_repositories(group_id=1, exclude_list=[], recursive=True)
 
         mock_group.projects.list.assert_called()
+
+    def test_exclusions_with_glob_patterns(self):
+        mock_gl = Mock()
+        mock_group = Mock()
+
+        mock_projects = []
+        for name in ["repo.backup", "data.backup", "archive-2023", "archive-old",
+                     "staging-dev", "staging-qa", "test_repo", "test_project", "normal-repo"]:
+            mock_project = Mock()
+            mock_project.id = len(mock_projects) + 1
+            mock_project.name = name
+            mock_projects.append(mock_project)
+
+        mock_group.projects.list.return_value = mock_projects
+
+        client = GitLabClient("https://gitlab.com", "test-token")
+        client.gl = mock_gl
+        mock_gl.groups.get.return_value = mock_group
+
+        patterns = ["*.backup", "archive-*", "staging-*", "test_*"]
+        result = client.get_group_repositories(group_id=1, exclude_list=patterns)
+
+        assert len(result) == 1
+        assert result[9].name == "normal-repo"
+
+    def test_mixed_exact_and_glob_patterns(self):
+        mock_gl = Mock()
+        mock_group = Mock()
+
+        mock_projects = []
+        for name in ["exact_repo", "project.backup", "staging-qa", "keep-this"]:
+            mock_project = Mock()
+            mock_project.id = len(mock_projects) + 1
+            mock_project.name = name
+            mock_projects.append(mock_project)
+
+        mock_group.projects.list.return_value = mock_projects
+
+        client = GitLabClient("https://gitlab.com", "test-token")
+        client.gl = mock_gl
+        mock_gl.groups.get.return_value = mock_group
+
+        patterns = ["exact_repo", "*.backup", "staging-*"]
+        result = client.get_group_repositories(group_id=1, exclude_list=patterns)
+
+        assert len(result) == 1
+        assert result[4].name == "keep-this"
+
+    def test_edge_case_glob_patterns(self):
+        mock_gl = Mock()
+        mock_group = Mock()
+
+        mock_projects = []
+        for name in ["a", "ab", "abc", "a_b_c", "test_repo", "test_dev"]:
+            mock_project = Mock()
+            mock_project.id = len(mock_projects) + 1
+            mock_project.name = name
+            mock_projects.append(mock_project)
+
+        mock_group.projects.list.return_value = mock_projects
+
+        client = GitLabClient("https://gitlab.com", "test-token")
+        client.gl = mock_gl
+        mock_gl.groups.get.return_value = mock_group
+
+        patterns = ["a?c", "test_*"]
+        result = client.get_group_repositories(group_id=1, exclude_list=patterns)
+
+        assert len(result) == 3
+        assert 1 in result  # "a"
+        assert 2 in result  # "ab"
+        assert 4 in result  # "a_b_c"
+
+    def test_no_match_excludes_nothing(self):
+        mock_gl = Mock()
+        mock_group = Mock()
+
+        mock_projects = []
+        for name in ["project-a", "project-b", "project-c"]:
+            mock_project = Mock()
+            mock_project.id = len(mock_projects) + 1
+            mock_project.name = name
+            mock_projects.append(mock_project)
+
+        mock_group.projects.list.return_value = mock_projects
+
+        client = GitLabClient("https://gitlab.com", "test-token")
+        client.gl = mock_gl
+        mock_gl.groups.get.return_value = mock_group
+
+        patterns = ["*.backup", "archive-*"]
+        result = client.get_group_repositories(group_id=1, exclude_list=patterns)
+
+        assert len(result) == 3
+
+    def test_is_excluded_helper_method(self):
+        client = GitLabClient("https://gitlab.com", "test-token")
+
+        assert client._is_excluded("repo.backup", ["*.backup"]) is True
+        assert client._is_excluded("archive-2023", ["archive-*"]) is True
+        assert client._is_excluded("staging-dev", ["staging-*"]) is True
+        assert client._is_excluded("test_repo", ["test_*"]) is True
+        assert client._is_excluded("exact_name", ["exact_name"]) is True
+        assert client._is_excluded("other-project", ["*.backup", "archive-*"]) is False
+        assert client._is_excluded("data.backup", ["repo.backup"]) is False

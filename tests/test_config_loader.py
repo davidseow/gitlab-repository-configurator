@@ -103,3 +103,72 @@ class TestConfigLoader:
         assert rules["merge_method"] == "rebase"
         assert rules["only_allow_merge_if_all_discussions_are_resolved"] is True
         assert rules["only_allow_merge_if_pipeline_succeeds"] is True
+
+    def test_empty_token_in_config(self, tmp_path):
+        """Verify empty token string is allowed (falls back to env var)."""
+        import yaml
+
+        config_file = tmp_path / "config.yaml"
+        config_data = {
+            "gitlab": {
+                "url": "https://gitlab.com",
+                "token": "",
+                "group_id": 1,
+            },
+            "exclusions": [],
+            "merge_request_rules": {},
+        }
+        with open(config_file, "w") as f:
+            yaml.dump(config_data, f)
+
+        loader = ConfigLoader(str(config_file))
+        config = loader.load()
+        gitlab_config = loader.get_gitlab_config(config)
+
+        assert gitlab_config["token"] == ""
+
+    def test_non_https_url_in_config(self, tmp_path):
+        """Verify non-HTTPS URLs are allowed in config (validation happens at CLI)."""
+        import yaml
+
+        config_file = tmp_path / "config.yaml"
+        config_data = {
+            "gitlab": {
+                "url": "http://gitlab.example.com",
+                "token": "test-token",
+                "group_id": 1,
+            },
+            "exclusions": [],
+            "merge_request_rules": {},
+        }
+        with open(config_file, "w") as f:
+            yaml.dump(config_data, f)
+
+        loader = ConfigLoader(str(config_file))
+        config = loader.load()
+        gitlab_config = loader.get_gitlab_config(config)
+
+        assert gitlab_config["url"] == "http://gitlab.example.com"
+
+    def test_non_integer_group_id_in_config(self, tmp_path):
+        """Verify non-integer group_id is loaded as-is (type validation at runtime)."""
+        import yaml
+
+        config_file = tmp_path / "config.yaml"
+        config_data = {
+            "gitlab": {
+                "url": "https://gitlab.com",
+                "token": "test-token",
+                "group_id": "invalid-string",
+            },
+            "exclusions": [],
+            "merge_request_rules": {},
+        }
+        with open(config_file, "w") as f:
+            yaml.dump(config_data, f)
+
+        loader = ConfigLoader(str(config_file))
+        config = loader.load()
+        gitlab_config = loader.get_gitlab_config(config)
+
+        assert gitlab_config["group_id"] == "invalid-string"

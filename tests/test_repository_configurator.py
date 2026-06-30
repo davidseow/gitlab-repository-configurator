@@ -116,3 +116,30 @@ class TestRepositoryConfigurator:
                 configurator.configure_all()
 
         assert mock_gitlab_client.get_group_repositories.called
+
+    def test_dry_run_mode_no_api_calls_to_modify_repositories(self, mock_gitlab_client):
+        """Verify dry-run mode prevents all modification API calls."""
+        mock_config = {
+            "gitlab": {"group_id": 1},
+            "exclusions": [],
+            "merge_request_rules": {
+                "merge_method": "rebase",
+            },
+            "dry_run": True,
+        }
+
+        mock_repo = Mock()
+        mock_repo.id = 1
+        mock_repo.name = "test-repo"
+
+        mock_gitlab_client.get_group_repositories.return_value = {1: mock_repo}
+        mock_gitlab_client.update_merge_request_rules.return_value = None
+
+        configurator = RepositoryConfigurator(mock_gitlab_client, mock_config)
+
+        with patch.object(configurator, "confirm_action", return_value=True):
+            with patch.object(configurator, "display_repositories"):
+                configurator.configure_all()
+
+        mock_gitlab_client.update_merge_request_rules.assert_not_called()
+        mock_gitlab_client.enable_slack_integration.assert_not_called()

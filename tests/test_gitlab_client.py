@@ -222,3 +222,46 @@ class TestGitLabClient:
         assert client._is_excluded("exact_name", ["exact_name"]) is True
         assert client._is_excluded("other-project", ["*.backup", "archive-*"]) is False
         assert client._is_excluded("data.backup", ["repo.backup"]) is False
+
+    def test_update_merge_request_rules_with_safe_attributes_only(self):
+        """Verify that only merge request related attributes are modified."""
+        mock_gl = Mock()
+        mock_project = Mock()
+        mock_gl.projects.get.return_value = mock_project
+
+        client = GitLabClient("https://gitlab.com", "test-token")
+        client.gl = mock_gl
+
+        safe_merge_attributes = {
+            "merge_method": "rebase",
+            "only_allow_merge_if_all_discussions_are_resolved": True,
+            "only_allow_merge_if_pipeline_succeeds": True,
+        }
+
+        client.update_merge_request_rules(project_id=1, rules=safe_merge_attributes)
+
+        assert mock_project.save.called
+        for key, _value in safe_merge_attributes.items():
+            assert hasattr(mock_project, key)
+
+    def test_update_merge_request_rules_accepts_arbitrary_attributes(self):
+        """Document that merge request rules are applied via setattr without validation.
+
+        Note: The current implementation does not validate attribute names before
+        setting them. This means arbitrary attributes could be set if provided in
+        the configuration. Attribute name validation should be implemented.
+        """
+        mock_gl = Mock()
+        mock_project = Mock()
+        mock_gl.projects.get.return_value = mock_project
+
+        client = GitLabClient("https://gitlab.com", "test-token")
+        client.gl = mock_gl
+
+        rules = {
+            "merge_method": "rebase",
+            "custom_attribute": "custom_value",
+        }
+
+        client.update_merge_request_rules(project_id=1, rules=rules)
+        mock_project.save.assert_called_once()

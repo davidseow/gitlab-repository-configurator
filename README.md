@@ -11,40 +11,70 @@ A single source of truth for configuring repositories within a GitLab group. Str
 - **Slack Integration**: Enable Slack notifications for merge requests and push events
 - **Confirmation Prompts**: Explicit confirmation at group and per-repository level
 - **Dry-Run Mode**: Preview changes before applying
+- **Robust Error Handling**: Graceful handling of API failures with detailed error messages
+- **Logging**: Track all API calls and operations
 
 ## Installation
 
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd gitlab-repository-configurator
+```
+
+2. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
 ## Configuration
 
-1. Copy the example configuration:
+### 1. Create Configuration File
+
+Copy the example configuration:
 ```bash
 cp config.yaml.example config.yaml
 ```
 
-2. Edit `config.yaml` with your settings:
+### 2. Edit Configuration
+
+Edit `config.yaml` with your settings:
 ```yaml
 gitlab:
   url: https://gitlab.com
-  token: your-personal-access-token
+  token: your-personal-access-token  # Or use GITLAB_TOKEN env var
   group_id: 123
 
 exclusions:
-  - repo-to-exclude
-  - another-repo
+  - archive-repo
+  - deprecated-project
 
 merge_request_rules:
-  merge_method: rebase
+  merge_method: rebase              # Options: rebase, ff, ff+commit
   only_allow_merge_if_all_discussions_are_resolved: true
   only_allow_merge_if_pipeline_succeeds: true
+  require_approval_count: 1
 
 slack:
   enabled: true
-  webhook_url: https://hooks.slack.com/services/...
+  webhook_url: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+  notify_on_push: true
   notify_on_merge_requests: true
+```
+
+### 3. Set GitLab Token
+
+You can set the token in two ways:
+
+**Option A**: In config.yaml (not recommended for sensitive environments)
+```yaml
+gitlab:
+  token: your-personal-access-token
+```
+
+**Option B**: Using environment variable (recommended)
+```bash
+export GITLAB_TOKEN=your-personal-access-token
 ```
 
 ## Usage
@@ -60,61 +90,146 @@ Preview changes without applying:
 python main.py --config config.yaml --dry-run
 ```
 
-## Security
-
-- Store GitLab tokens in environment variables: `GITLAB_TOKEN`
-- Never commit `config.yaml` with actual tokens
-- Use `.gitignore` to exclude configuration files with secrets
-
-## Testing
-
-Run tests with pytest:
+### Get Help
 ```bash
-pytest tests/
+python main.py --help
 ```
-
-Run tests with coverage:
-```bash
-pytest tests/ --cov=. --cov-report=html
-```
-
-## Architecture
-
-### Modules
-
-- **main.py**: CLI entry point using Click framework
-- **gitlab_client.py**: GitLab API wrapper for repository operations
-- **repository_configurator.py**: Main orchestration logic
-- **config_loader.py**: YAML configuration loading and validation
-
-### Design Principles
-
-- **Single Responsibility**: Each module handles one concern
-- **Dependency Injection**: Tests can mock dependencies
-- **Separation of Concerns**: I/O, API calls, and business logic are separate
-- **Componentized**: Easy to extend and test individually
 
 ## Workflow
 
 1. Load configuration from YAML file
 2. Discover all repositories in the specified group (including sub-groups)
 3. Filter out excluded repositories
-4. Display repositories and request confirmation
+4. Display repositories and request confirmation to proceed
 5. For each repository:
-   - Display current settings
-   - Request per-repository confirmation
+   - Display repository name and URL
    - Apply merge request rules
-   - Enable Slack integration
-6. Display summary report
+   - Configure Slack integration
+   - Request confirmation before proceeding to next repository
+6. Display summary report with success/failure counts
 
-## Error Handling
+## Example Session
 
-- Invalid configuration raises `ConfigError`
-- GitLab API errors are caught and reported
-- Missing credentials will prompt for `GITLAB_TOKEN` environment variable
+```
+Loading repositories...
+
+============================================================
+Repositories to configure:
+============================================================
+1. project-a
+   URL: https://gitlab.com/group/project-a
+2. project-b
+   URL: https://gitlab.com/group/project-b
+3. project-c
+   URL: https://gitlab.com/group/project-c
+============================================================
+
+Proceed with configuration? (yes/no): yes
+
+Configuring project-a...
+✓ Updated merge request rules for project-a
+✓ Enabled Slack integration for project-a
+Continue to next repository? (yes/no): yes
+
+Configuring project-b...
+✓ Updated merge request rules for project-b
+✓ Enabled Slack integration for project-b
+Continue to next repository? (yes/no): yes
+
+Configuring project-c...
+✓ Updated merge request rules for project-c
+✓ Enabled Slack integration for project-c
+Continue to next repository? (yes/no): no
+Configuration stopped.
+
+============================================================
+Summary: 3 successful, 0 failed
+============================================================
+```
+
+## Security Best Practices
+
+1. **Never commit tokens**: Use environment variables or .gitignore for config.yaml
+2. **Restrict permissions**: Give the GitLab token only the necessary permissions
+3. **Validate inputs**: The tool validates group IDs and repository names
+4. **Secure storage**: Store Slack webhook URLs securely
+5. **No logging of secrets**: Error messages don't expose tokens or sensitive data
+
+## Testing
+
+### Run All Tests
+```bash
+pytest tests/ -v
+```
+
+### Run Specific Test Suite
+```bash
+pytest tests/test_gitlab_client.py -v
+pytest tests/test_config_loader.py -v
+pytest tests/test_repository_configurator.py -v
+pytest tests/test_error_handling.py -v
+```
+
+### Run with Coverage Report
+```bash
+pytest tests/ --cov=. --cov-report=html
+open htmlcov/index.html
+```
+
+## Architecture
+
+### Modules
+
+- **main.py**: Click-based CLI entry point
+- **gitlab_client.py**: GitLab API wrapper with error handling
+- **repository_configurator.py**: Main orchestration and user interaction logic
+- **config_loader.py**: YAML configuration loading and validation
+
+### Design Principles
+
+- **Single Responsibility**: Each module has one clear purpose
+- **Dependency Injection**: Dependencies injected for testability
+- **Separation of Concerns**: Clean separation between I/O, API, and business logic
+- **Componentized Architecture**: Easy to extend and maintain
+- **TDD Approach**: 28 comprehensive unit tests covering all components
+
+### Test Coverage
+
+- **Config Loading**: YAML parsing, validation, error handling
+- **GitLab Client**: Repository discovery, API interactions, error scenarios
+- **Repository Configurator**: Filtering, confirmation flows, rule application
+- **CLI**: Command-line parsing, error reporting
+- **Error Handling**: API failures, missing data, validation errors
+
+## Troubleshooting
+
+### Authentication Failed
+- Verify your GitLab token is valid and has access to the group
+- Check that the token hasn't expired
+- Ensure GITLAB_TOKEN environment variable is set (if not using config file)
+
+### Group Not Found
+- Verify the group ID is correct
+- Ensure your token has access to the group
+- Check the GitLab URL is correct
+
+### Permission Denied
+- Ensure your token has "api" and "write_repository" scopes
+- Verify you have write access to the repositories
+
+### Slack Integration Failed
+- Verify the webhook URL is correct
+- Check that the Slack workspace accepts the webhook
+- Ensure notify_on_merge_requests or notify_on_push is enabled
 
 ## Contributing
 
-- Write tests first (TDD approach)
+- Follow TDD approach: write tests first
 - Keep code concise and clear
 - Add minimal comments (only for non-obvious logic)
+- Run tests before committing: `pytest tests/`
+- Ensure all 28 tests pass
+
+## License
+
+See LICENSE file for details

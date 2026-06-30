@@ -1,0 +1,22 @@
+gitlab:
+  url: https://gitlab.com
+  token: your-personal-access-token  # Or set GITLAB_TOKEN env var
+  group_id: 123
+
+exclusions:
+  - archive-repo
+  - deprecated-project
+  - staging-backup
+
+merge_request_rules:
+  merge_method: rebase  # Options: rebase, ff, ff+commit
+  only_allow_merge_if_all_discussions_are_resolved: true
+  only_allow_merge_if_pipeline_succeeds: true
+  require_approval_count: 1
+
+slack:
+  enabled: true
+  webhook_url: https://hooks.slack.com/services/YOUR/WEBHOOK/URL
+  notify_on_push: true
+  notify_on_merge_requests: true
+  notify_on_issues: false

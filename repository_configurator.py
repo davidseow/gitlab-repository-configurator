@@ -1,5 +1,8 @@
 from typing import Dict, List, Any
-from gitlab_client import GitLabClient
+import logging
+from gitlab_client import GitLabClient, GitLabError
+
+logger = logging.getLogger(__name__)
 
 
 class RepositoryConfigurator:
@@ -33,50 +36,66 @@ class RepositoryConfigurator:
         response = input(f"{prompt} (yes/no): ").strip().lower()
         return response in ["yes", "y"]
 
-    def apply_rules_to_repository(self, repository: Any) -> None:
+    def apply_rules_to_repository(self, repository: Any) -> bool:
         dry_run = self.config.get("dry_run", False)
 
         if dry_run:
             print(f"[DRY RUN] Would configure {repository.name}")
-            return
+            return True
 
-        merge_rules = self.config.get("merge_request_rules", {})
-        if merge_rules:
-            self.gitlab_client.update_merge_request_rules(
-                project_id=repository.id,
-                rules=merge_rules,
-            )
-            print(f"✓ Updated merge request rules for {repository.name}")
+        try:
+            merge_rules = self.config.get("merge_request_rules", {})
+            if merge_rules:
+                self.gitlab_client.update_merge_request_rules(
+                    project_id=repository.id,
+                    rules=merge_rules,
+                )
+                print(f"✓ Updated merge request rules for {repository.name}")
 
-        slack_config = self.config.get("slack", {})
-        if slack_config.get("enabled"):
-            self.gitlab_client.enable_slack_integration(
-                project_id=repository.id,
-                slack_settings=slack_config,
-            )
-            print(f"✓ Enabled Slack integration for {repository.name}")
+            slack_config = self.config.get("slack", {})
+            if slack_config.get("enabled"):
+                self.gitlab_client.enable_slack_integration(
+                    project_id=repository.id,
+                    slack_settings=slack_config,
+                )
+                print(f"✓ Enabled Slack integration for {repository.name}")
+            return True
+        except GitLabError as e:
+            print(f"✗ Error configuring {repository.name}: {e}")
+            return False
 
     def configure_all(self) -> None:
-        print("\nLoading repositories...")
-        repositories = self.load_repositories()
+        try:
+            print("\nLoading repositories...")
+            repositories = self.load_repositories()
 
-        if not repositories:
-            print("No repositories found to configure.")
-            return
+            if not repositories:
+                print("No repositories found to configure.")
+                return
 
-        repo_list = list(repositories.values())
-        self.display_repositories(repo_list)
+            repo_list = list(repositories.values())
+            self.display_repositories(repo_list)
 
-        if not self.confirm_action("Proceed with configuration?"):
-            print("Configuration cancelled.")
-            return
+            if not self.confirm_action("Proceed with configuration?"):
+                print("Configuration cancelled.")
+                return
 
-        for repo in repo_list:
-            print(f"\nConfiguring {repo.name}...")
-            self.apply_rules_to_repository(repo)
+            successful = 0
+            failed = 0
 
-            if not self.confirm_action(f"Continue to next repository?"):
-                print("Configuration stopped.")
-                break
+            for repo in repo_list:
+                print(f"\nConfiguring {repo.name}...")
+                if self.apply_rules_to_repository(repo):
+                    successful += 1
+                else:
+                    failed += 1
 
-        print("\n✓ Configuration complete!")
+                if not self.confirm_action(f"Continue to next repository?"):
+                    print("Configuration stopped.")
+                    break
+
+            print(f"\n{'='*60}")
+            print(f"Summary: {successful} successful, {failed} failed")
+            print(f"{'='*60}")
+        except GitLabError as e:
+            print(f"Error during configuration: {e}")

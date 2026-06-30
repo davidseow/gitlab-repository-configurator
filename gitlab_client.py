@@ -1,5 +1,12 @@
 import gitlab
 from typing import List, Dict, Any, Optional
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+class GitLabError(Exception):
+    pass
 
 
 class GitLabClient:
@@ -14,40 +21,63 @@ class GitLabClient:
         exclude_list: List[str],
         recursive: bool = True,
     ) -> Dict[int, Any]:
-        group = self.gl.groups.get(group_id)
-        projects = group.projects.list(
-            get_all=True,
-            include_subgroups=recursive,
-        )
+        try:
+            group = self.gl.groups.get(group_id)
+            projects = group.projects.list(
+                get_all=True,
+                include_subgroups=recursive,
+            )
 
-        filtered = {}
-        for project in projects:
-            if project.name not in exclude_list:
-                filtered[project.id] = project
+            filtered = {}
+            for project in projects:
+                if project.name not in exclude_list:
+                    filtered[project.id] = project
 
-        return filtered
+            logger.info(f"Found {len(filtered)} repositories in group {group_id}")
+            return filtered
+        except gitlab.exceptions.GitlabGetError as e:
+            raise GitLabError(f"Group {group_id} not found: {e}")
+        except gitlab.exceptions.GitlabAuthenticationError as e:
+            raise GitLabError(f"Authentication failed: {e}")
+        except Exception as e:
+            raise GitLabError(f"Failed to fetch repositories: {e}")
 
     def update_merge_request_rules(self, project_id: int, rules: Dict[str, Any]) -> None:
-        project = self.gl.projects.get(project_id)
+        try:
+            project = self.gl.projects.get(project_id)
 
-        for key, value in rules.items():
-            setattr(project, key, value)
+            for key, value in rules.items():
+                setattr(project, key, value)
 
-        project.save()
+            project.save()
+            logger.info(f"Updated merge request rules for project {project_id}")
+        except gitlab.exceptions.GitlabGetError:
+            raise GitLabError(f"Project {project_id} not found")
+        except Exception as e:
+            raise GitLabError(f"Failed to update merge request rules for project {project_id}: {e}")
 
     def enable_slack_integration(
         self,
         project_id: int,
         slack_settings: Dict[str, Any],
     ) -> None:
-        project = self.gl.projects.get(project_id)
+        try:
+            if not slack_settings.get("webhook_url"):
+                raise GitLabError("Slack webhook_url is required")
 
-        integration_data = {
-            "webhook_url": slack_settings.get("webhook_url"),
-            "notify_on_push": slack_settings.get("notify_on_push", True),
-            "notify_on_merge_requests": slack_settings.get(
-                "notify_on_merge_requests", True
-            ),
-        }
+            project = self.gl.projects.get(project_id)
 
-        project.integrations.create("slack", integration_data)
+            integration_data = {
+                "webhook_url": slack_settings.get("webhook_url"),
+                "notify_on_push": slack_settings.get("notify_on_push", True),
+                "notify_on_merge_requests": slack_settings.get(
+                    "notify_on_merge_requests", True
+                ),
+            }
+
+            project.integrations.create("slack", integration_data)
+            logger.info(f"Enabled Slack integration for project {project_id}")
+        except gitlab.exceptions.GitlabGetError:
+            raise GitLabError(f"Project {project_id} not found")
+        except Exception as e:
+            raise GitLabError(f"Failed to enable Slack integration for project {project_id}: {e}")

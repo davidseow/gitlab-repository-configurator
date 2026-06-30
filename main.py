@@ -1,8 +1,11 @@
 import os
 import click
+import logging
 from config_loader import ConfigLoader, ConfigError
-from gitlab_client import GitLabClient
+from gitlab_client import GitLabClient, GitLabError
 from repository_configurator import RepositoryConfigurator
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 
 @click.command()
@@ -48,6 +51,9 @@ def configure(config: str, dry_run: bool) -> None:
 
     except ConfigError as e:
         click.echo(f"Configuration Error: {e}", err=True)
+        raise SystemExit(1)
+    except GitLabError as e:
+        click.echo(f"GitLab Error: {e}", err=True)
         raise SystemExit(1)
     except Exception as e:
         click.echo(f"Error: {e}", err=True)

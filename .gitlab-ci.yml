@@ -1,0 +1,26 @@
+image: python:3.11
+
+stages:
+  - lint
+  - test
+
+cache:
+  paths:
+    - .uv/
+
+before_script:
+  - pip install uv
+  - uv sync --all-extras
+
+lint:
+  stage: lint
+  script:
+    - make check
+  allow_failure: false
+
+test:
+  stage: test
+  script:
+    - make test
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  allow_failure: false

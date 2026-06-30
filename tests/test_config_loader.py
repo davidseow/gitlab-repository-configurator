@@ -1,8 +1,6 @@
 import pytest
-import tempfile
-import os
-from pathlib import Path
-from config_loader import ConfigLoader, ConfigError
+
+from config_loader import ConfigError, ConfigLoader
 
 
 class TestConfigLoader:
@@ -28,6 +26,7 @@ class TestConfigLoader:
 
     def test_load_config_from_file(self, sample_config, tmp_path):
         import yaml
+
         config_file = tmp_path / "config.yaml"
         with open(config_file, "w") as f:
             yaml.dump(sample_config, f)
@@ -47,6 +46,7 @@ class TestConfigLoader:
 
     def test_validate_config_required_fields(self, sample_config, tmp_path):
         import yaml
+
         config_file = tmp_path / "config.yaml"
 
         invalid_config = {
@@ -63,6 +63,7 @@ class TestConfigLoader:
 
     def test_get_gitlab_config(self, sample_config, tmp_path):
         import yaml
+
         config_file = tmp_path / "config.yaml"
         with open(config_file, "w") as f:
             yaml.dump(sample_config, f)
@@ -77,6 +78,7 @@ class TestConfigLoader:
 
     def test_get_exclusions(self, sample_config, tmp_path):
         import yaml
+
         config_file = tmp_path / "config.yaml"
         with open(config_file, "w") as f:
             yaml.dump(sample_config, f)
@@ -89,6 +91,7 @@ class TestConfigLoader:
 
     def test_get_merge_request_rules(self, sample_config, tmp_path):
         import yaml
+
         config_file = tmp_path / "config.yaml"
         with open(config_file, "w") as f:
             yaml.dump(sample_config, f)

@@ -1,5 +1,7 @@
+from unittest.mock import Mock
+
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+
 from gitlab_client import GitLabClient
 
 
@@ -112,8 +114,17 @@ class TestGitLabClient:
         mock_group = Mock()
 
         mock_projects = []
-        for name in ["repo.backup", "data.backup", "archive-2023", "archive-old",
-                     "staging-dev", "staging-qa", "test_repo", "test_project", "normal-repo"]:
+        for name in [
+            "repo.backup",
+            "data.backup",
+            "archive-2023",
+            "archive-old",
+            "staging-dev",
+            "staging-qa",
+            "test_repo",
+            "test_project",
+            "normal-repo",
+        ]:
             mock_project = Mock()
             mock_project.id = len(mock_projects) + 1
             mock_project.name = name

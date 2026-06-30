@@ -1,5 +1,7 @@
-import pytest
 from unittest.mock import Mock
+
+import pytest
+
 from gitlab_client import GitLabClient, GitLabError
 from repository_configurator import RepositoryConfigurator
 

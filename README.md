@@ -22,10 +22,17 @@ git clone <repository-url>
 cd gitlab-repository-configurator
 ```
 
-2. Install dependencies:
+2. Install [UV](https://docs.astral.sh/uv/) (Python package manager):
 ```bash
-pip install -r requirements.txt
+pip install uv
 ```
+
+3. Install dependencies:
+```bash
+make install
+```
+
+This project uses UV for dependency management and Python 3.9+.
 
 ## Configuration
 
@@ -76,6 +83,40 @@ gitlab:
 ```bash
 export GITLAB_TOKEN=your-personal-access-token
 ```
+
+## Development
+
+### Available Commands
+
+Common development tasks are automated using a Makefile:
+
+```bash
+make install      # Install dependencies (one-time setup)
+make test         # Run test suite
+make lint         # Check code style with ruff
+make format       # Format code automatically with ruff
+make check        # Run linting and format checks
+make fix          # Fix linting and formatting issues
+make help         # Show all available commands
+```
+
+### Running the Application
+
+```bash
+make run CONFIG=config.yaml              # Run the application
+make dry-run CONFIG=config.yaml          # Preview changes without applying
+```
+
+### Code Quality
+
+The project uses [ruff](https://docs.astral.sh/ruff/) for unified linting and code formatting. Before submitting changes:
+
+```bash
+make check        # Verify code passes all checks
+make fix          # Automatically fix issues
+```
+
+Code must pass linting checks and be properly formatted. All tests must pass before submitting a pull request.
 
 ## Exclusion Patterns (Glob Matching)
 
@@ -273,8 +314,15 @@ open htmlcov/index.html
 - Follow TDD approach: write tests first
 - Keep code concise and clear
 - Add minimal comments (only for non-obvious logic)
-- Run tests before committing: `pytest tests/`
-- Ensure all 28 tests pass
+- Use British English for documentation and comments
+- Run checks before committing:
+  ```bash
+  make check        # Verify linting and formatting
+  make test         # Ensure all 33 tests pass
+  make fix          # Automatically fix any issues
+  ```
+- Code must pass ruff checks and be properly formatted
+- All tests must pass before submitting changes
 
 ## License
 

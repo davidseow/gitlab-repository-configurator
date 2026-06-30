@@ -1,6 +1,5 @@
-import pytest
-from unittest.mock import Mock, patch
 from click.testing import CliRunner
+
 from main import configure
 
 

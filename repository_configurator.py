@@ -1,16 +1,17 @@
-from typing import Dict, List, Any
 import logging
+from typing import Any
+
 from gitlab_client import GitLabClient, GitLabError
 
 logger = logging.getLogger(__name__)
 
 
 class RepositoryConfigurator:
-    def __init__(self, gitlab_client: GitLabClient, config: Dict[str, Any]):
+    def __init__(self, gitlab_client: GitLabClient, config: dict[str, Any]):
         self.gitlab_client = gitlab_client
         self.config = config
 
-    def load_repositories(self) -> Dict[int, Any]:
+    def load_repositories(self) -> dict[int, Any]:
         group_id = self.config["gitlab"]["group_id"]
         exclusions = self.config.get("exclusions", [])
 
@@ -21,7 +22,7 @@ class RepositoryConfigurator:
 
         return repos
 
-    def display_repositories(self, repositories: List[Any]) -> None:
+    def display_repositories(self, repositories: list[Any]) -> None:
         print("\n" + "=" * 60)
         print("Repositories to configure:")
         print("=" * 60)
@@ -90,12 +91,12 @@ class RepositoryConfigurator:
                 else:
                     failed += 1
 
-                if not self.confirm_action(f"Continue to next repository?"):
+                if not self.confirm_action("Continue to next repository?"):
                     print("Configuration stopped.")
                     break
 
-            print(f"\n{'='*60}")
+            print(f"\n{'=' * 60}")
             print(f"Summary: {successful} successful, {failed} failed")
-            print(f"{'='*60}")
+            print(f"{'=' * 60}")
         except GitLabError as e:
             print(f"Error during configuration: {e}")
